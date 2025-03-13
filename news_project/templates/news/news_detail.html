@@ -1,0 +1,137 @@
+{% extends 'news/base.html' %}
+
+{% block content %}
+    <div class="card">
+        <div class="card-body">
+            <h2 class="card-title">{{ news.title }}</h2>
+            
+            {% if news.picture %}
+                <img src="{{ news.picture.url }}" class="img-fluid mb-3" alt="News Image">
+            {% else %}
+                <p>No image available.</p>
+            {% endif %}
+
+            
+            <p class="card-text">{{ news.text }}</p>
+
+            <!-- Display Tags -->
+            <p><strong>Tags:</strong> 
+                {% for tag in news.tags.all %}
+                    <a href="?tag={{ tag.name }}" class="badge bg-primary">{{ tag.name }}</a>
+                {% endfor %}
+            </p>
+
+            <!-- Display Views Count -->
+            <p><strong>Views:</strong> <span id="views-count">{{ news.views }}</span></p>
+
+            <!-- Like Button -->
+            {% if user.is_authenticated %}
+                <button id="like-button" class="btn btn-success">Like (<span id="like-count">{{ news.likes.count }}</span>)</button>
+            {% else %}
+                <p><a href="{% url 'login' %}?next={{ request.path }}" class="btn btn-primary">Login to Like</a></p>
+            {% endif %}
+
+            {% if user.is_authenticated and user == news.author %}
+            <button id="delete-button" class="btn btn-danger">Delete</button>
+            {% endif %}
+        
+        </div>
+    </div>
+    
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const newsId = "{{ news.id }}";
+
+            fetch(`/news/${newsId}/track-view/`, {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": "{{ csrf_token }}",
+                    "Content-Type": "application/json"
+                },
+                credentials: "include"
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById("views-count").textContent = data.views;
+                }
+            })
+            .catch(error => console.error("Error tracking views:", error));
+        });
+    
+        document.addEventListener("DOMContentLoaded", function () {
+            const deleteButton = document.getElementById("delete-button");
+    
+            if (deleteButton) {
+                deleteButton.addEventListener("click", function () {
+                    if (!confirm("Are you sure you want to delete this news post?")) return;
+    
+                    fetch(`/news/{{ news.id }}/delete/`, {
+                        method: "DELETE",
+                        headers: {
+                            "X-CSRFToken": "{{ csrf_token }}",
+                            "Content-Type": "application/json"
+                        },
+                        credentials: "include"
+                    })
+                    .then(response => {
+                        if (response.status === 204) {
+                            alert("News deleted successfully!");
+                            window.location.href = "/";  // Redirect to home page after delete
+                        } else {
+                            return response.json();
+                        }
+                    })
+                    .then(data => {
+                        if (data && data.error) {
+                            alert("Error: " + data.error);
+                        }
+                    })
+                    .catch(error => console.error("Error deleting news:", error));
+                });
+            }
+        });
+    
+        document.addEventListener("DOMContentLoaded", function () {
+            const likeButton = document.getElementById("like-button");
+            const likeCount = document.getElementById("like-count");
+        
+            if (!likeButton) return; // Prevent errors if button isn't rendered
+        
+            // Get CSRF Token from meta tag
+            const csrftoken = document.querySelector('meta[name="csrf-token"]').getAttribute("content");
+        
+            // Get News ID dynamically
+            const newsId = "{{ news.id }}";
+        
+            likeButton.addEventListener("click", function () {
+                fetch(`/news/${newsId}/like/`, {
+                    method: "POST",
+                    headers: {
+                        "X-CSRFToken": csrftoken,
+                        "Content-Type": "application/json"
+                    },
+                    credentials: "include" 
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log("Server Response:", data); 
+                    if (data.message === "Liked") {
+                        likeButton.textContent = `Unlike (${data.likes_count})`;
+                    } else {
+                        likeButton.textContent = `Like (${data.likes_count})`;
+                    }
+                    likeCount.textContent = data.likes_count;
+                })
+                .catch(error => console.error("Error:", error));
+            });
+        });
+        
+    </script>
+{% endblock %}
+
+
+
+    
+

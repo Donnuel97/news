@@ -1,0 +1,72 @@
+{% extends 'news/base.html' %}
+
+{% block content %}
+    <h2>Latest News</h2>
+
+    <div id="news-container">
+        <!-- News will be loaded here via JavaScript -->
+    </div>
+
+    <div id="loading" style="display: none; text-align: center; margin-top: 10px;">
+        <img src="/static/images/loader.gif" alt="Loading..." width="50">
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            let page = 1;
+            let isLoading = false;  // Prevent multiple requests
+            let nextPage = `/api/news/?page=${page}`;
+            const newsContainer = document.getElementById("news-container");
+            const loadingDiv = document.getElementById("loading");
+
+            function loadNews() {
+                if (!nextPage || isLoading) return;
+                isLoading = true;
+                loadingDiv.style.display = "block";
+
+                fetch(nextPage)
+                    .then(response => response.json())
+                    .then(data => {
+                        data.results.forEach(news => {
+                            let tagsHTML = (news.tags || []).map(tag => `<a href="?tag=${tag.name}" class="badge bg-primary">${tag.name}</a>`).join(' ');
+
+                            const newsElement = document.createElement("div");
+                            newsElement.classList.add("card", "mb-3");
+                            newsElement.innerHTML = `
+                                <div class="card-body">
+                                    <h5 class="card-title">${news.title}</h5>
+                                    <p class="card-text">${news.text.substring(0, 150)}...</p>
+                                    <p><strong>Tags:</strong> ${tagsHTML}</p>
+                                    <p><small class="text-muted">Posted on ${news.created_at}</small></p>
+                                    <a href="/news/${news.id}/" class="btn btn-primary">Read More</a>
+                                </div>
+                            `;
+                            newsContainer.appendChild(newsElement);
+                        });
+
+                        nextPage = data.next; // Update next page URL
+                        if (!nextPage) {
+                            window.removeEventListener("scroll", handleScroll); // Stop listening if no more pages
+                        }
+
+                        isLoading = false;
+                        loadingDiv.style.display = "none";
+                    })
+                    .catch(error => {
+                        console.error("Error loading news:", error);
+                        isLoading = false;
+                        loadingDiv.style.display = "none";
+                    });
+            }
+
+            function handleScroll() {
+                if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 200) {
+                    loadNews();
+                }
+            }
+
+            window.addEventListener("scroll", handleScroll);
+            loadNews(); // Initial load
+        });
+    </script>
+{% endblock %}

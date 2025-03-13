@@ -1,0 +1,13 @@
+.card {
+    transition: transform 0.2s;
+}
+.card:hover {
+    transform: scale(1.02);
+}
+.news-image {
+    width: 100%; /* Make it responsive */
+    max-width: 600px; /* Limit maximum width */
+    max-height: 400px; /* Limit maximum height */
+    display: block;
+    margin: auto; /* Center the image */
+}
